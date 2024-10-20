@@ -1,0 +1,25 @@
+curl -L -o ori.yaml https://gist.githubusercontent.com/jazst21/76532ecec18104a77089a6e888a897bb/raw/05bcf2494b07282d4ceec6453766660dd1139c5d/ori-ecs-deployment.yaml
+
+aws cloudformation create-stack \
+  --stack-name original-stack \
+  --template-body file://original-ecs-cloudformation.yaml \
+  --parameters \
+    ParameterKey=VpcId,ParameterValue=vpc-09b8b9ee1fcf0de38 \
+    ParameterKey=PublicSubnet1,ParameterValue=subnet-0ce1a401a4449b525 \
+    ParameterKey=PublicSubnet2,ParameterValue=subnet-071dc3b502c5638cf \
+  --capabilities CAPABILITY_IAM \
+  --region ap-southeast-1
+
+aws cloudformation describe-stacks --stack-name original-stack --query 'Stacks[0].Outputs' --output json
+----
+aws cloudformation create-stack \
+  --stack-name honeypot-stack \
+  --template-body file://honeypot-ecs-cloudformation.yaml \
+  --parameters \
+    ParameterKey=VpcId,ParameterValue=vpc-09b8b9ee1fcf0de38 \
+    ParameterKey=PublicSubnet1,ParameterValue=subnet-0ce1a401a4449b525 \
+    ParameterKey=PublicSubnet2,ParameterValue=subnet-071dc3b502c5638cf \
+  --capabilities CAPABILITY_IAM \
+  --region ap-southeast-1
+
+aws cloudformation describe-stacks --stack-name honeypot-stack --query 'Stacks[0].Outputs' --output json

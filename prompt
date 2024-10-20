@@ -1,0 +1,9 @@
+create new cloudformation stack with the following:
+1 public ALB with 2 public subnets
+3 services:
+  - frontend public.ecr.aws/u2g6w7p2/eks-workshop-demo/frontend_node:2.0
+  - prodcatalog-service public.ecr.aws/u2g6w7p2/eks-workshop-demo/product_catalog:1.0 with /product path
+  - proddetail-service public.ecr.aws/u2g6w7p2/eks-workshop-demo/product_detail:1.0 with /catalogDetail path
+use existing vpc and subnets
+use service discovery for internal communication
+

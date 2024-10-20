@@ -1,0 +1,12 @@
+curl -L -o ori-template.yaml https://gist.githubusercontent.com/jazst21/76532ecec18104a77089a6e888a897bb/raw/05bcf2494b07282d4ceec6453766660dd1139c5d/ori-ecs-deployment.yaml
+
+aws cloudformation create-stack \
+  --stack-name my-ecs-deployment \
+  --template-body file://ori-ecs-deployment.yaml \
+  --region ap-southeast-1 \
+  --parameters \
+    ParameterKey=VpcId,ParameterValue=vpc-09b8b9ee1fcf0de38 \
+    ParameterKey=PublicSubnet1Id,ParameterValue=subnet-0ce1a401a4449b525 \
+    ParameterKey=PublicSubnet2Id,ParameterValue=subnet-071dc3b502c5638cf \
+  --capabilities CAPABILITY_IAM
+----

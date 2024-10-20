@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  honeypot:
+    image: public.ecr.aws/r6u4x6s4/honeypot:v1-arm64-20241021-013358
+    ports:
+      - "5000:5000"
+
+networks:
+  default:
+    name: honeypot-network

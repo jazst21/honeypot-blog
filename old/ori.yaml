@@ -1,0 +1,165 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: workshop
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: frontend
+  namespace: workshop
+  labels:
+    app: frontend
+spec:
+  containers:
+  - name: frontend
+    image: public.ecr.aws/u2g6w7p2/eks-workshop-demo/frontend_node:2.0
+    livenessProbe:
+      httpGet:
+        path: /ping
+        port: 9000
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      timeoutSeconds: 1
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ping
+        port: 9000
+      successThreshold: 3
+    ports:
+    - containerPort: 9000
+    env:
+    - name: BASE_URL
+      value: "http://prodcatalog-service.workshop.svc.cluster.local:5000/products/"
+    - name: AWS_XRAY_DAEMON_ADDRESS
+      value: xray-service.default:2000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: workshop
+spec:
+  selector:
+    app: frontend
+  ports:
+    - protocol: TCP
+      port: 9000
+      targetPort: 9000
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress
+  namespace: workshop
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+spec:
+  ingressClassName: alb
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 9000
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: prodcatalog
+  namespace: workshop
+  labels:
+    app: prodcatalog
+spec:
+  containers:
+  - name: prodcatalog
+    image: public.ecr.aws/u2g6w7p2/eks-workshop-demo/product_catalog:1.0
+    livenessProbe:
+      httpGet:
+        path: /products/ping
+        port: 5000
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      timeoutSeconds: 1
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /products/ping
+        port: 5000
+      successThreshold: 3
+    ports:
+    - containerPort: 5000
+    env:
+    - name: AGG_APP_URL
+      value: "http://proddetail-service.workshop.svc.cluster.local:3000/catalogDetail"
+    - name: AWS_XRAY_DAEMON_ADDRESS
+      value: xray-service.default:2000
+    - name: DATABASE_SERVICE_URL
+      value: mysql.workshop
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prodcatalog-service
+  namespace: workshop
+spec:
+  selector:
+    app: prodcatalog
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: proddetail
+  namespace: workshop
+  labels:
+    app: proddetail
+spec:
+  containers:
+  - name: proddetail
+    image: public.ecr.aws/u2g6w7p2/eks-workshop-demo/catalog_detail:1.0
+    livenessProbe:
+      httpGet:
+        path: /ping
+        port: 3000
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      timeoutSeconds: 1
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ping
+        port: 3000
+      successThreshold: 3
+    ports:
+    - containerPort: 3000
+    env:
+      - name: AWS_XRAY_DAEMON_ADDRESS
+        value: xray-service.default:2000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: proddetail-service
+  namespace: workshop
+spec:
+  selector:
+    app: proddetail
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+  type: ClusterIP
+---
