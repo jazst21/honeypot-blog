@@ -51,3 +51,4 @@ terraform.rc
 # Python cache
 __pycache__/
 *.pyc
+**/__pycache__/
