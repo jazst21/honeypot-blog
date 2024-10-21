@@ -35,6 +35,7 @@ This project supports multiple deployment options:
 - Modify the CloudFormation template or Terraform files as needed to customize your deployment.
 
 ## Architecture
+with modifications, we can implement honeypot routing as below final architecture.
 ![alt text](architecture.png)
 ## Contributing
 
