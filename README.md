@@ -34,6 +34,8 @@ This project supports multiple deployment options:
 
 - Modify the CloudFormation template or Terraform files as needed to customize your deployment.
 
+## Architecture
+![alt text](architecture.png)
 ## Contributing
 
 1. Fork the repository
