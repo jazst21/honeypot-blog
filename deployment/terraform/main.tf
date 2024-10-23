@@ -92,9 +92,9 @@ data "aws_availability_zones" "available" {
 }
 
 # Security Groups
-resource "aws_security_group" "honeypot_alb" {
-  name        = "honeypot-alb-sg"
-  description = "Security group for Honeypot ALB"
+resource "aws_security_group" "alb" {
+  name        = "workshop-alb-sg"
+  description = "Security group for Workshop ALB"
   vpc_id      = aws_vpc.workshop.id
 
   ingress {
@@ -118,30 +118,10 @@ resource "aws_security_group" "honeypot_container" {
   vpc_id      = aws_vpc.workshop.id
 
   ingress {
-    from_port       = 5000
-    to_port         = 5000
+    from_port       = 80
+    to_port         = 80
     protocol        = "tcp"
-    security_groups = [aws_security_group.honeypot_alb.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_security_group" "original_alb" {
-  name        = "original-alb-sg"
-  description = "Security group for Original ALB"
-  vpc_id      = aws_vpc.workshop.id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    security_groups = [aws_security_group.alb.id]
   }
 
   egress {
@@ -158,10 +138,10 @@ resource "aws_security_group" "original_container" {
   vpc_id      = aws_vpc.workshop.id
 
   ingress {
-    from_port       = 5000
-    to_port         = 5000
+    from_port       = 80
+    to_port         = 80
     protocol        = "tcp"
-    security_groups = [aws_security_group.original_alb.id]
+    security_groups = [aws_security_group.alb.id]
   }
 
   egress {
@@ -195,6 +175,12 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
   role       = aws_iam_role.ecs_execution_role.name
 }
 
+# Add this new IAM policy attachment for CloudWatch Logs
+resource "aws_iam_role_policy_attachment" "ecs_cloudwatch_logs" {
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+  role       = aws_iam_role.ecs_execution_role.name
+}
+
 # ECS Task Definitions (place these after the IAM roles)
 resource "aws_ecs_task_definition" "honeypot" {
   family                   = "honeypot-task"
@@ -210,10 +196,18 @@ resource "aws_ecs_task_definition" "honeypot" {
       image = var.honeypot_image
       portMappings = [
         {
-          containerPort = 5000
+          containerPort = 80
           protocol      = "tcp"
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/honeypot-task"
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
+        }
+      }
     }
   ])
 
@@ -237,10 +231,18 @@ resource "aws_ecs_task_definition" "original" {
       image = var.original_image
       portMappings = [
         {
-          containerPort = 5000
+          containerPort = 80
           protocol      = "tcp"
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/original-task"
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
+        }
+      }
     }
   ])
 
@@ -276,7 +278,7 @@ resource "aws_ecs_service" "honeypot" {
   load_balancer {
     target_group_arn = aws_lb_target_group.honeypot.arn
     container_name   = "honeypot-container"
-    container_port   = 5000
+    container_port   = 80
   }
 
   depends_on = [aws_lb_listener.honeypot, aws_iam_role_policy_attachment.ecs_execution_role_policy]
@@ -298,7 +300,7 @@ resource "aws_ecs_service" "original" {
   load_balancer {
     target_group_arn = aws_lb_target_group.original.arn
     container_name   = "original-container"
-    container_port   = 5000
+    container_port   = 80
   }
 
   depends_on = [aws_lb_listener.original, aws_iam_role_policy_attachment.ecs_execution_role_policy]
@@ -309,7 +311,7 @@ resource "aws_lb" "honeypot" {
   name               = "honeypot-alb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.honeypot_alb.id]
+  security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.workshop_public[*].id
 
   enable_deletion_protection = false
@@ -320,7 +322,7 @@ resource "aws_lb" "original" {
   name               = "original-alb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.original_alb.id]
+  security_groups    = [aws_security_group.alb.id]
   subnets            = aws_subnet.workshop_public[*].id
 
   enable_deletion_protection = false
@@ -328,7 +330,7 @@ resource "aws_lb" "original" {
 
 resource "aws_lb_target_group" "honeypot" {
   name        = "honeypot-tg"
-  port        = 5000
+  port        = 80
   protocol    = "HTTP"
   vpc_id      = aws_vpc.workshop.id
   target_type = "ip"
@@ -355,7 +357,7 @@ resource "aws_lb_listener" "honeypot" {
 
 resource "aws_lb_target_group" "original" {
   name        = "original-tg"
-  port        = 5000
+  port        = 80
   protocol    = "HTTP"
   vpc_id      = aws_vpc.workshop.id
   target_type = "ip"
@@ -449,5 +451,37 @@ output "original_cluster_console_link" {
 output "honeypot_cluster_console_link" {
   description = "Link to the Honeypot ECS Cluster in AWS Console"
   value       = "https://${var.aws_region}.console.aws.amazon.com/ecs/home?region=${var.aws_region}#/clusters/${aws_ecs_cluster.honeypot.name}"
+}
+
+# Add CloudWatch Log Groups
+resource "aws_cloudwatch_log_group" "honeypot" {
+  name              = "/ecs/honeypot-task"
+  retention_in_days = 30
+}
+
+resource "aws_cloudwatch_log_group" "original" {
+  name              = "/ecs/original-task"
+  retention_in_days = 30
+}
+
+# Add outputs for CloudWatch Log Groups
+output "honeypot_log_group_name" {
+  description = "Name of the Honeypot CloudWatch Log Group"
+  value       = aws_cloudwatch_log_group.honeypot.name
+}
+
+output "original_log_group_name" {
+  description = "Name of the Original CloudWatch Log Group"
+  value       = aws_cloudwatch_log_group.original.name
+}
+
+output "honeypot_log_group_console_link" {
+  description = "Link to the Honeypot CloudWatch Log Group in AWS Console"
+  value       = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#logsV2:log-groups/log-group/${aws_cloudwatch_log_group.honeypot.name}"
+}
+
+output "original_log_group_console_link" {
+  description = "Link to the Original CloudWatch Log Group in AWS Console"
+  value       = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#logsV2:log-groups/log-group/${aws_cloudwatch_log_group.original.name}"
 }
 

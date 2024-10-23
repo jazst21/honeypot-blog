@@ -53,3 +53,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - AWS CloudFormation and ECS documentation
 - Terraform documentation
+
+## Running the Application
+
+To run the application locally:
+
+1. Build and run the Docker container:
+   ```
+   docker-compose up --build
+   ```
+
+2. Access the application at `http://localhost:80`

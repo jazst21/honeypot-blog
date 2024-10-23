@@ -17,13 +17,12 @@ COPY ${APP_FILE} app.py
 # Copy the templates folder
 COPY templates/ ./templates/
 
-# Make port 5000 available to the world outside this container
-EXPOSE 5000
+# Expose port 80
+EXPOSE 80
 
 # Define environment variables
 ENV FLASK_APP=app.py
 ENV FLASK_RUN_HOST=0.0.0.0
-ENV FLASK_RUN_PORT=5000
+ENV FLASK_RUN_PORT=80
 
-# Run Flask development server when the container launches
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+CMD ["python", "app.py"]
